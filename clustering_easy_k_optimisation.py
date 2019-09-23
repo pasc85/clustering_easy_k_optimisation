@@ -1,8 +1,16 @@
+# todo: fix the dropout problem
+
 import numpy as np
 import math
 
 
 def sample_from_unit_ball(m, n, mode='uniform'):
+    """
+    This method draws m samples from n-dimensional space, where the mode of the
+    sampling is either 'normal' (each coordinate drawn from standard normal dist),
+    'surface' (sample from the surface of the ball of radius 1), or 'uniform'
+    (sample uniformly in the ball of radius 1; default).
+    """
     # assertions on input
     assert type(m) == int and type(n) == int
     assert m > 0 and n > 0
@@ -15,14 +23,12 @@ def sample_from_unit_ball(m, n, mode='uniform'):
     # when sampling uniformly in the ball, give the points on the surface
     # an appropriately sampled radius
     if mode == 'uniform':
-        # todo!!!
-        pass
+        samples = samples * np.power(np.random.rand(samples.shape[0], 1), 1/n)
     # otherwise (e.g., mode='normal') keep the normal samples and return
     return samples
 
 
-def clustering_multiple_k(data, min_k=1, max_k=9,
-                          max_iter=50, min_ratio_mk=2):
+def clustering_multiple_k(data, min_k=1, max_k=9, max_iter=50, min_ratio_mk=2):
     # assertions on input and preparations
     assert all([type(min_k) == int, type(min_k) == int, min_k > 0])
     assert type(data) == np.ndarray and len(data.shape) == 2
@@ -31,15 +37,15 @@ def clustering_multiple_k(data, min_k=1, max_k=9,
     # initialise dictionary of classes and volumes
     class_dict = {}
     vol_dict = {}
+    dist_sum_dict = {}
     # iterate over k in the given range, collect class labels and the
     # 'volume' of the clustering in each case (the keys of those dictionaries
     # are 'k=1', 'k=2', ... to avoid confusion)
     for k_iter in range(min_k, max_k+1):
         key = 'k='+str(k_iter)
-        class_dict[key], vol_dict[key] = clustering_fixed_k(data, k_iter,
-                                                            max_iter,
-                                                            min_ratio_mk)
-    return class_dict, vol_dict
+        class_dict[key], vol_dict[key], dist_sum_dict[key] \
+            = clustering_fixed_k(data, k_iter, max_iter, min_ratio_mk)
+    return class_dict, vol_dict, dist_sum_dict
 
 
 def clustering_fixed_k(data, k, max_iter=50, min_ratio_mk=2):
@@ -77,13 +83,16 @@ def clustering_fixed_k(data, k, max_iter=50, min_ratio_mk=2):
         # if a class has dropped out, print a warning and stop
         if len(np.unique(classes)) < k:
             print('k=' + str(k) + ': Warning: class dropped out')
-            return None, None
+            return None, None, None
         # check condition for termination of iteration
         if (all(old_classes == classes)) or (i == max_iter - 1):
-            # determine the sum of the volume of the balls
+            # determine the sum of the volume of the balls and
+            # and distances between samples and centres
             volume = 0
+            dist_sum = 0
             for j in range(k):
                 volume += Vn * (distances[classes == j, j].max())**n
+                dist_sum += distances[classes == j, j].sum()
             # message to state how many iterations were used
             # or give a warning
             if (i == max_iter - 1):
@@ -93,4 +102,4 @@ def clustering_fixed_k(data, k, max_iter=50, min_ratio_mk=2):
                 print('k=' + str(k)
                       + ': Stopped clustering after iteration ' + str(i))
             break
-    return classes, volume
+    return classes, volume, dist_sum
