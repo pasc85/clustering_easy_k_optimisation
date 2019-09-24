@@ -83,9 +83,15 @@ def clustering_fixed_k(data, k, max_iter=100, min_ratio_mk=2):
         # find class centroids
         for k_iter in range(k):
             if k_iter not in classes:
+                # if centroid k_iter was orphaned (i.e. now points are
+                # associated to it),
+                # set to sample point that farthest away
+                m_star = np.argmax(np.sum(np.power(data
+                        - temp_centroids[:, :, k_iter], 2), axis=1), axis=0)
                 temp_centroids[:, :, k_iter] = np.broadcast_to(
-                    (data[np.random.randint(m), :]).reshape((1, n)), (m, n))
+                        (data[m_star, :]).reshape((1, n)), (m, n))
             else:
+                # if centroid has members, set to their centre point
                 temp_centroids[:, :, k_iter] = np.broadcast_to(
                     (np.sum(data[classes == k_iter, :], axis=0)
                      / sum(classes == k_iter)).reshape((1, n)), (m, n))
